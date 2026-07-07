@@ -48,6 +48,7 @@ class OCRSpaceProvider(OCRProvider):
         'el': 'gre',
         'fi': 'fin',
         'nl': 'dut',
+        'no': 'nor',
         'pl': 'pol',
         'tr': 'tur',
         'uk': 'ukr',
@@ -56,6 +57,11 @@ class OCRSpaceProvider(OCRProvider):
         'vi': 'vie',
         'ro': 'rum',
         'bg': 'bul',
+        'hr': 'hrv',
+        'cs': 'cze',
+        'hu': 'hun',
+        'sv': 'swe',
+        'da': 'dan',
     }
 
     # Languages that benefit from Engine 2 (Asian languages)

@@ -1,7 +1,7 @@
 // TextTranslator.tsx
 
 import { call } from "@decky/api";
-import { TextRegion, NetworkError, ApiKeyError, ErrorResponse } from "./TextRecognizer";
+import { TextRegion, NetworkError, ApiKeyError, RateLimitError, ErrorResponse } from "./TextRecognizer";
 import { logger } from "./Logger";
 
 // Type guard to check if response is an error
@@ -47,7 +47,7 @@ export class TextTranslator {
             }
 
             // Call the Python backend method for translation, now including input language
-            const response = await call<TranslatedRegion[] | ErrorResponse>(
+            const response = await call<[TextRegion[], string, string], TranslatedRegion[] | ErrorResponse>(
                 'translate_text',
                 textRegions,
                 this.targetLanguage,
@@ -65,6 +65,10 @@ export class TextTranslator {
                     if (errorResponse.error === 'api_key_error') {
                         logger.error('TextTranslator', `API key error: ${errorResponse.message}`);
                         throw new ApiKeyError(errorResponse.message);
+                    }
+                    if (errorResponse.error === 'rate_limit_error') {
+                        logger.error('TextTranslator', `Rate limit error: ${errorResponse.message}`);
+                        throw new RateLimitError(errorResponse.message);
                     }
                     // Handle other error types if needed
                     logger.error('TextTranslator', `Error from backend: ${errorResponse.error} - ${errorResponse.message}`);
@@ -87,7 +91,7 @@ export class TextTranslator {
             }));
         } catch (error) {
             // Re-throw NetworkError and ApiKeyError to be handled by caller
-            if (error instanceof NetworkError || error instanceof ApiKeyError) {
+            if (error instanceof NetworkError || error instanceof ApiKeyError || error instanceof RateLimitError) {
                 throw error;
             }
             logger.error('TextTranslator', 'Text translation error', error);

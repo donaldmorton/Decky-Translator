@@ -53,7 +53,13 @@ const languageOptions = [
     { label: "🇺🇦 Ukrainian", data: "uk" },
     { label: "🇷🇴 Romanian", data: "ro" },
     { label: "🇻🇳 Vietnamese", data: "vi" },
-    { label: "🇧🇬 Bulgarian", data: "bg" }
+    { label: "🇧🇬 Bulgarian", data: "bg" },
+    { label: "🇭🇷 Croatian", data: "hr" },
+    { label: "🇨🇿 Czech", data: "cs" },
+    { label: "🇩🇰 Danish", data: "da" },
+    { label: "🇭🇺 Hungarian", data: "hu" },
+    { label: "🇳🇴 Norwegian", data: "no" },
+    { label: "🇸🇪 Swedish", data: "sv" }
 ];
 
 const selectLanguageOption = { label: "Select language...", data: "" };
@@ -62,7 +68,8 @@ const outputLanguageOptions = languageOptions.filter(lang => lang.data !== "auto
 // Languages RapidOCR able to work with
 const rapidocrLanguages = new Set([
     'en', 'zh-CN', 'zh-TW', 'ja', 'ko',
-    'de', 'fr', 'es', 'it', 'pt', 'nl', 'pl', 'tr', 'ro', 'vi', 'fi',
+    'de', 'fr', 'es', 'it', 'pt', 'nl', 'no', 'pl', 'tr', 'ro', 'vi', 'fi',
+    'hr', 'cs', 'hu', 'sv', 'da',
     'ru', 'uk', 'el', 'th', 'bg'
 ]);
 
@@ -421,7 +428,9 @@ export const TabTranslation: VFC = () => {
                     <Focusable
                         style={{ height: "1px", opacity: 0 }}
                         onActivate={() => {}}
-                    />
+                    >
+                        {null}
+                    </Focusable>
                 </PanelSectionRow>
             </PanelSection>
 

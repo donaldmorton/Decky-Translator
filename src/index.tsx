@@ -85,7 +85,7 @@ const GameTranslator: VFC<{ logic: GameTranslatorLogic }> = ({ logic }) => {
 
         const fetchProviderStatus = async () => {
             try {
-                const result = await call<any>('get_provider_status');
+                const result = await call<[], any>('get_provider_status');
                 if (result) {
                     setProviderStatus(result);
                 }
@@ -293,6 +293,7 @@ export default definePlugin(() => {
     ));
 
     return {
+        name: "Decky Translator",
         title: <div className={staticClasses.Title}>Decky Translator</div>,
         content: <TranslatorApp logic={logic}/>,
         icon: <BsTranslate/>,

@@ -9,7 +9,7 @@ from typing import List
 
 import requests
 
-from .base import OCRProvider, ProviderType, TextRegion, NetworkError, ApiKeyError
+from .base import OCRProvider, ProviderType, TextRegion, NetworkError, ApiKeyError, RateLimitError, classify_google_error
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,8 @@ class GoogleVisionProvider(OCRProvider):
 
     SUPPORTED_LANGUAGES = [
         'auto', 'en', 'ja', 'zh-CN', 'zh-TW', 'ko', 'de', 'fr', 'es', 'it',
-        'pt', 'ru', 'ar', 'nl', 'pl', 'tr', 'uk', 'hi', 'el', 'th', 'vi', 'fi', 'id', 'ro', 'bg'
+        'pt', 'ru', 'ar', 'nl', 'no', 'pl', 'tr', 'uk', 'hi', 'el', 'th', 'vi', 'fi', 'id', 'ro', 'bg', 'hr',
+        'cs', 'hu', 'sv', 'da'
     ]
 
     def __init__(self, api_key: str = ""):
@@ -96,15 +97,16 @@ class GoogleVisionProvider(OCRProvider):
             if response.status_code != 200:
                 logger.error(f"Google Vision API error: {response.status_code}")
                 logger.error(f"Response: {response.text[:500]}")
-                # Check for API key errors
-                if response.status_code == 400:
-                    try:
-                        error_data = response.json()
-                        error_msg = error_data.get('error', {}).get('message', '')
-                        if 'API key not valid' in error_msg or 'API_KEY_INVALID' in response.text:
-                            raise ApiKeyError("Invalid API key")
-                    except (ValueError, KeyError):
-                        pass
+                reason = classify_google_error(response.status_code, response.text)
+                if reason in (
+                    "Invalid API key",
+                    "API not enabled in Cloud project",
+                    "Billing not enabled",
+                    "Access blocked (key restriction)",
+                ):
+                    raise ApiKeyError(reason)
+                if reason == "Rate limited":
+                    raise RateLimitError(reason)
                 return []
 
             result = response.json()
@@ -112,6 +114,8 @@ class GoogleVisionProvider(OCRProvider):
 
         except ApiKeyError:
             raise  # Re-raise API key errors
+        except RateLimitError:
+            raise
         except requests.exceptions.ConnectionError as e:
             logger.error(f"Google Vision connection error: {e}")
             raise NetworkError("No internet connection") from e

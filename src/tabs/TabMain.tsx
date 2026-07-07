@@ -11,7 +11,7 @@ import {
     Focusable
 } from "@decky/ui";
 
-import { VFC } from "react";
+import { VFC, useEffect, useState } from "react";
 import { BsTranslate, BsXLg, BsEye, BsBook } from "react-icons/bs";
 import { SiKofi } from "react-icons/si";
 import { HiQrCode } from "react-icons/hi2";
@@ -28,6 +28,19 @@ interface TabMainProps {
 
 export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStatus }) => {
     const { settings, updateSetting } = useSettings();
+    const [explanationState, setExplanationState] = useState(logic.imageState.getExplanationState());
+
+    useEffect(() => {
+        const handleExplanationChanged = (data: any, loading: boolean, visible: boolean, error: string) => {
+            setExplanationState({ data, loading, visible, error });
+        };
+
+        const current = logic.imageState.getExplanationState();
+        setExplanationState(current);
+
+        logic.imageState.onExplanationChanged(handleExplanationChanged);
+        return () => logic.imageState.offExplanationChanged(handleExplanationChanged);
+    }, [logic]);
 
     const handleButtonClick = () => {
         if (overlayVisible) {
@@ -73,9 +86,9 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                                 <ButtonItem
                                     bottomSeparator="standard"
                                     layout="below"
-                                    disabled={!logic.imageState.hasExplanation()}
+                                    disabled={!logic.imageState.hasExplanation() && !explanationState.loading}
                                     onClick={() => logic.imageState.toggleExplanationVisible()}>
-                                    <span><BsBook style={{marginRight: "8px"}} /> Show Breakdown</span>
+                                    <span><BsBook style={{marginRight: "8px"}} /> {explanationState.loading ? "Loading Breakdown" : "Show Breakdown"}</span>
                                 </ButtonItem>
                             </PanelSectionRow>
                         )}

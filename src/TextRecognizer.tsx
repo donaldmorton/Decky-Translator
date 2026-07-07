@@ -416,7 +416,7 @@ export class TextRecognizer {
     }
 
     // Spacing for horizontal (same-line) merging
-    private getHorizontalSpacing(a: TextRegion, b: TextRegion, medianH: number): string {
+    private getHorizontalSpacing(a: TextRegion, b: TextRegion, _medianH: number): string {
         // No space before closing punctuation
         if (/^[.,!?:;)\]"'\u3002\u3001\uFF09\u300D\u300F\u3011\u3009\u300B)]/.test(b.text)) {
             return "";
@@ -664,7 +664,7 @@ export class TextRecognizer {
 
     async recognizeText(imageData: string): Promise<TextRegion[]> {
         try {
-            const response = await call<TextRegion[]>('recognize_text', imageData);
+            const response = await call<[string], TextRegion[]>('recognize_text', imageData);
 
             if (response) {
                 const regions = response;
@@ -687,7 +687,7 @@ export class TextRecognizer {
 
     async recognizeTextFile(imagePath: string): Promise<TextRegion[]> {
         try {
-            const response = await call<TextRegion[] | ErrorResponse>('recognize_text_file', imagePath);
+            const response = await call<[string], TextRegion[] | ErrorResponse>('recognize_text_file', imagePath);
             if (response) {
                 if (isErrorResponse(response)) {
                     const errorResponse = response as ErrorResponse;

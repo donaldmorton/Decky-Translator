@@ -10,6 +10,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 import logging
+import re
 import json
 import base64
 import tarfile
@@ -85,6 +86,66 @@ from providers import OpenAIExplainProvider, GeminiExplainProvider
 
 _processing_lock = False
 
+SENSITIVE_SETTING_KEYS = {
+    "google_api_key",
+    "google_vision_api_key",
+    "google_translate_api_key",
+    "openai_api_key",
+    "gemini_api_key",
+}
+
+
+def _mask_secret(value):
+    if not isinstance(value, str) or not value:
+        return value
+    if len(value) <= 4:
+        return "****"
+    return "*" * (len(value) - 4) + value[-4:]
+
+
+def _mask_for_log(key, value):
+    return _mask_secret(value) if key in SENSITIVE_SETTING_KEYS else value
+
+
+_API_KEY_JUNK_RE = re.compile(r"[\s\u200b\u200c\u200d\u2060\ufeff]+")
+
+
+def _clean_api_key(value):
+    if not isinstance(value, str):
+        return value
+    return _API_KEY_JUNK_RE.sub("", value)
+
+
+_URL_KEY_RE = re.compile(r"\bkey=([A-Za-z0-9_\-]{16,})")
+
+
+def _redact_url_keys(text):
+    return _URL_KEY_RE.sub(lambda m: f"key={_mask_secret(m.group(1))}", text)
+
+
+class UrlKeyRedactFilter(logging.Filter):
+    def filter(self, record):
+        try:
+            if isinstance(record.msg, str) and "key=" in record.msg:
+                record.msg = _redact_url_keys(record.msg)
+            if record.args:
+                if isinstance(record.args, dict):
+                    record.args = {
+                        k: _redact_url_keys(v) if isinstance(v, str) and "key=" in v else v
+                        for k, v in record.args.items()
+                    }
+                else:
+                    record.args = tuple(
+                        _redact_url_keys(a) if isinstance(a, str) and "key=" in a else a
+                        for a in record.args
+                    )
+        except Exception:
+            pass
+        return True
+
+
+_url_redact_filter = UrlKeyRedactFilter()
+
 # Get environment variable
 settingsDir = os.environ.get("DECKY_PLUGIN_SETTINGS_DIR", "/home/deck/homebrew/settings")
 
@@ -124,10 +185,19 @@ from logging.handlers import TimedRotatingFileHandler
 log_file = Path(DECKY_PLUGIN_LOG_DIR) / "decky-translator.log"
 log_file_handler = TimedRotatingFileHandler(log_file, when="midnight", backupCount=2)
 log_file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+log_file_handler.addFilter(_url_redact_filter)
 logger.handlers.clear()
 logger.addHandler(log_file_handler)
 logger.setLevel(logging.INFO)
+logging.getLogger("urllib3").addFilter(_url_redact_filter)
 logger.info(f"Configured rotating log file: {log_file}")
+
+try:
+    with open(os.path.join(PLUGIN_DIR, "package.json")) as _pkg:
+        _plugin_version = json.load(_pkg).get("version", "unknown")
+except Exception:
+    _plugin_version = "unknown"
+logger.info(f"Decky Translator v{_plugin_version} starting")
 
 
 import threading
@@ -772,11 +842,13 @@ class SettingsManager:
 
     def set_setting(self, key, value):
         try:
+            if key in SENSITIVE_SETTING_KEYS:
+                value = _clean_api_key(value)
             self.settings[key] = value
             os.makedirs(os.path.dirname(self.settings_path), exist_ok=True)
             with open(self.settings_path, 'w') as f:
                 json.dump(self.settings, f, indent=4)
-            logger.debug(f"Saved setting {key}={value}")
+            logger.debug(f"Saved setting {key}={_mask_for_log(key, value)}")
             return True
         except Exception as e:
             logger.error(f"Failed to save setting {key}: {str(e)}")
@@ -785,7 +857,7 @@ class SettingsManager:
 
     def get_setting(self, key, default=None):
         value = self.settings.get(key, default)
-        logger.debug(f"Getting setting {key}: {value}")
+        logger.debug(f"Getting setting {key}: {_mask_for_log(key, value)}")
         return value
 
 
@@ -894,7 +966,9 @@ class Plugin:
         return self._settings.get_setting(key, default)
 
     async def set_setting(self, key, value):
-        logger.debug(f"Setting {key} to: {value}")
+        if key in SENSITIVE_SETTING_KEYS:
+            value = _clean_api_key(value)
+        logger.debug(f"Setting {key} to: {_mask_for_log(key, value)}")
         try:
             if key == "target_language":
                 self._target_language = value
@@ -1432,7 +1506,7 @@ class Plugin:
             return {"error": "network_error", "message": str(e)}
         except ApiKeyError as e:
             logger.error(f"API key error during OCR: {e}")
-            return {"error": "api_key_error", "message": "Invalid API key"}
+            return {"error": "api_key_error", "message": str(e) or "Invalid API key"}
         except RateLimitError as e:
             logger.error(f"Rate limit during OCR: {e}")
             return {"error": "rate_limit_error", "message": str(e)}
@@ -1502,7 +1576,10 @@ class Plugin:
             return {"error": "network_error", "message": str(e)}
         except ApiKeyError as e:
             logger.error(f"API key error during translation: {e}")
-            return {"error": "api_key_error", "message": "Invalid API key"}
+            return {"error": "api_key_error", "message": str(e) or "Invalid API key"}
+        except RateLimitError as e:
+            logger.error(f"Rate limit during translation: {e}")
+            return {"error": "rate_limit_error", "message": str(e)}
         except Exception as e:
             logger.error(f"Translation error: {e}")
             logger.error(traceback.format_exc())

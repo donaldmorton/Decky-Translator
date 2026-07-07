@@ -98,6 +98,18 @@ interface SettingsContextType {
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
+const maskSecret = (value?: string): string => {
+    if (!value) return "";
+    return value.length <= 4 ? "****" : `${"*".repeat(value.length - 4)}${value.slice(-4)}`;
+};
+
+const maskSettingsForLog = (settings: Partial<Settings>): Partial<Settings> => ({
+    ...settings,
+    googleApiKey: maskSecret(settings.googleApiKey),
+    openaiApiKey: maskSecret(settings.openaiApiKey),
+    geminiApiKey: maskSecret(settings.geminiApiKey),
+});
+
 // Create the provider component
 interface SettingsProviderProps {
     children: React.ReactNode;
@@ -113,7 +125,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
     // Load all settings at once
     const loadAllSettings = async () => {
         try {
-            const serverSettings = await call<any>('get_all_settings');
+            const serverSettings = await call<[], any>('get_all_settings');
 
             if (serverSettings) {
 
@@ -177,7 +189,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 logic.setAllowLabelGrowth(serverSettings.allow_label_growth ?? false);
 
                 logger.info('SettingsContext', 'All settings loaded successfully');
-                logger.logObject('SettingsContext', 'Settings', mappedSettings);
+                logger.logObject('SettingsContext', 'Settings', maskSettingsForLog(mappedSettings));
             } else {
                 logger.error('SettingsContext', 'Failed to load settings');
             }
@@ -296,7 +308,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
             }
 
             // Save to backend
-            const result = await call<boolean>('set_setting', backendKey, value);
+            const result = await call<[string, any], boolean>('set_setting', backendKey, value);
 
             if (result) {
                 // if (label) logic.notify(`${label} updated successfully`);

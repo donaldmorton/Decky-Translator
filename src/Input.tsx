@@ -159,7 +159,7 @@ export class Input {
         if (!this.enabled) return;
 
         try {
-            const result = await call<{ success: boolean; buttons: string[] }>('get_hidraw_button_state');
+            const result = await call<[], { success: boolean; buttons: string[] }>('get_hidraw_button_state');
 
             if (result && result.success && result.buttons) {
                 this.handleButtonState(result.buttons);
@@ -201,6 +201,7 @@ export class Input {
             // Process the new state
             this.processButtonState();
         }
+
     }
 
     // Check if the button set has changed

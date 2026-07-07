@@ -1,6 +1,6 @@
 {
   "name": "decky-translator",
-  "version": "0.8.0",
+  "version": "0.8.1-ai-overlay-composition",
   "type": "module",
   "description": "Translate anything on your screen to your language",
   "scripts": {

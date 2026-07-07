@@ -115,7 +115,7 @@ export class GameTranslatorLogic {
     // Load initial state from server
     private async loadInitialState() {
         try {
-            const result = await call<boolean>('get_enabled_state');
+            const result = await call<[], boolean>('get_enabled_state');
             this.enabled = !!result;
             logger.info('Translator', `Loaded initial enabled state: ${this.enabled}`);
 
@@ -230,13 +230,13 @@ export class GameTranslatorLogic {
             }
 
             // Use the pid_from_appid function to get the process ID
-            const pid = await call<number>('pid_from_appid', Number(mainApp.appid));
+            const pid = await call<[number], number>('pid_from_appid', Number(mainApp.appid));
 
             if (pid) {
                 logger.info('Translator', `Pausing game with appid ${mainApp.appid}, pid ${pid}`);
 
                 // Call the pause function in the backend
-                const pauseResult = await call<boolean>('pause', pid);
+                const pauseResult = await call<[number], boolean>('pause', pid);
                 if (pauseResult) {
                     logger.info('Translator', 'Game paused successfully');
                 } else {
@@ -261,13 +261,13 @@ export class GameTranslatorLogic {
             }
 
             // Use the pid_from_appid function to get the process ID
-            const pid = await call<number>('pid_from_appid', Number(mainApp.appid));
+            const pid = await call<[number], number>('pid_from_appid', Number(mainApp.appid));
 
             if (pid) {
                 logger.info('Translator', `Resuming game with appid ${mainApp.appid}, pid ${pid}`);
 
                 // Call the resume function in the backend
-                const resumeResult = await call<boolean>('resume', pid);
+                const resumeResult = await call<[number], boolean>('resume', pid);
                 if (resumeResult) {
                     logger.info('Translator', 'Game resumed successfully');
                 } else {
@@ -367,7 +367,7 @@ export class GameTranslatorLogic {
             // Take screenshot FIRST while screen is clean (no overlay visible)
             const appName = Router.MainRunningApp?.display_name || "";
             logger.info('Translator', `Taking new screenshot for: ${appName}`);
-            const result = await call<ScreenshotResponse>('take_screenshot', appName);
+            const result = await call<[string], ScreenshotResponse>('take_screenshot', appName);
 
             // NOW show the overlay - after screenshot is captured
             this.imageState.hideImage();
@@ -600,7 +600,7 @@ export class GameTranslatorLogic {
         logger.info('Translator', `Fetching AI explanation for ${regionsData.length} regions`);
         this.imageState.setExplanationLoading(true);
 
-        call('explain_text', regionsData)
+        call<[any[]], any>('explain_text', regionsData)
             .then((result: any) => {
                 try {
                     logger.info('Translator', `AI explanation result: ${JSON.stringify(result ?? null).substring(0, 200)}`);
